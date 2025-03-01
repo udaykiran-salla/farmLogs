@@ -1,6 +1,9 @@
 const db = require('../models')
 const moment = require('moment');
+
+require('../middleware/timeandCostCalculation')
 var FormLog = db.formLog
+var Service = db.serviceDetails
 
 // function calculateTotalTime(startTime,endTime){
 //     if(startTime && endTime){
@@ -26,13 +29,14 @@ exports.createFormLog= async( req , res )=>{
     endDateTime=moment(endDateTime)
     // var duration = moment.duration(endDateTime.diff(startDateTime));
     var duration = endDateTime.diff(startDateTime);
+    this.duration=duration
     totalTime= `${Math.floor(duration/(60*60*1000))}:${Math.floor((duration%(60*60*1000))/(60*1000))}`
 
     // console.log(duration)
     // console.log({startDateTime});
     // console.log({endDateTime});
 
-    if(endDateTime<=startDateTime){
+    if(endDateTime<startDateTime){
         res.status(400).send({
             message: "End time can not be prior to start time"
         })
@@ -40,6 +44,30 @@ exports.createFormLog= async( req , res )=>{
     
     // let totalTime = endDateTime-startDateTime;
     // console.log({totalTime});
+    try {
+        var service = await Service.find({userId:req.body.provider_id,serviceType:req.body.serviceType})
+        if(!service){
+            res.send("Service not available")
+        }
+        else{
+            if(service[0].serviceMeasureType==="time"){
+                console.log(service)
+                var costPerminute=(service[0].pricePerUnit)/60
+                console.log(costPerminute)
+                TotalCost=Math.floor((duration)/(60*1000))*costPerminute
+                console.log(TotalCost)
+
+            }
+            else{
+                TotalCost=req.body.numberOfUnits*service[0].pricePerUnit
+            }
+            
+        }
+    } catch (error) {
+        res.status(400).send({message: error.message})
+
+        
+    }
 
     try{
         var formlog = new FormLog({
@@ -49,12 +77,15 @@ exports.createFormLog= async( req , res )=>{
             endTime : endDateTime.toDate(),
             // totalTime : calculateTotalTime(startTime,endTime),
             totalTime,
-            NumberOfUnits : req.body.NumberOfUnits,
+            TotalCost,
+            numberOfUnits : req.body.numberOfUnits,
             serviceType : req.body.serviceType,
-            TotalCost:0
+            
         })
+        
+       
 
-        let log= await formlog.save()
+        let log= await formlog.save();
 
         res.status(201).send({message:"Logged Successfully",log})
 
@@ -73,5 +104,29 @@ exports.getLogs = async( req , res )=>{
     }
     res.send(logs)
 
+
+}
+
+exports.getUserLogs=async(req,res)=>{
+    const {search=''}=req.query
+
+    let pipeline=[
+        {
+            $match:{
+                $or:[
+                    {name:new RegExp(search,'i')},
+                    {phoneNumber:new RegExp(search,'i')}
+                ]
+            }
+        },
+        {
+            $lookup:{
+                from:'FormLog',
+                localField:'-id',
+                foreignField:'provider_id',
+                as:'userLogs'
+            }
+        }
+    ]
 
 }

@@ -1,4 +1,4 @@
-
+const Service=require('./ServiceDetailsModel')
 module.exports=mongoose=>{
     var formlogSchema= new mongoose.Schema({
         provider_id:{
@@ -30,7 +30,29 @@ module.exports=mongoose=>{
         TotalCost:Number
     })
 
+    // formlogSchema.pre('save', async function (next) {
+    //     const log = this;
+    //     console.log("in middleware cost calculation")
+    
+    //     // Find the service associated with this log
+    //     const service = await Service.find(log.serviceType);
+    //     if (!service) {
+    //         return next(new Error('Service not found'));
+    //     }
+    
+    //     if(service.serviceMeasureType==="Time"){
+    //         totalHours=(Math.floor(log.duration/(60*60*1000)))+((Math.floor(duration/(60*1000)))/60)
+    //         log.totalCost=totalHours*service.pricePerUnit
+    
+    //     }else{
+    //         log.totalCost=log.numberOfUnits*pricePerUnit
+    //     }
+    
+    
+    //     next();
+    // });
+
     var FormLog = mongoose.model("FormLog",formlogSchema)
 
-    return FormLog
+    return {FormLog,formlogSchema}
 }

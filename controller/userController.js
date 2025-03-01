@@ -42,3 +42,30 @@ exports.getUsers= async( req , res )=>{
     }
 
 }
+
+exports.getUserLogs=async(req,res)=>{
+  const {search=''}=req.query
+
+  let pipeline=[
+      {
+          $match:{
+              $or:[
+                  {name:new RegExp(search,'i')},
+                  {phoneNumber:new RegExp(search,'i')}
+              ]
+          }
+      },
+      {
+          $lookup:{
+              from:'formlogs',
+              localField:'-id',
+              foreignField:'provider_id',
+              as:'userLogs'
+          }
+      }
+  ]
+
+  var user=await User.aggregate(pipeline) 
+  console.log(user)
+
+}
